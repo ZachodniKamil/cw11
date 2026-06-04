@@ -1,75 +1,75 @@
 # MediaLab - system rezerwacji sprzetu
 
-Konsolowy program w Javie do obslugi wypozyczalni sprzetu w pracowni MediaLab.
-Pozwala przejrzec studentow i sprzet, utworzyc rezerwacje, zwrocic sprzet
-i wyswietlic raport z przychodow.
+Program konsolowy w Javie do wypozyczania sprzetu w pracowni MediaLab.
+Po uruchomieniu pokazuje menu, mozna przejrzec studentow i sprzet, zrobic
+rezerwacje, zwrocic sprzet i wyswietlic raport.
 
-## Jak uruchomic
+## Uruchomienie
 
-```
 javac -d out src/*.java
 java -cp out Main
-```
 
-## Opis klas
+## Za co odpowiadaja klasy
 
-- **Main** - punkt wejscia programu. Tworzy dane startowe (studenci, sprzet),
-  wyswietla menu i odczytuje wybor uzytkownika z konsoli. Sama logika biznesowa
-  jest w `ReservationService`, w `Main` jest tylko obsluga menu i komunikaty.
-- **Student** - dane studenta: id, imie i nazwisko, grupa, punkty lojalnosciowe.
-  Potrafi dodac sobie punkty po zwrocie sprzetu.
-- **Equipment** - abstrakcyjna klasa bazowa dla sprzetu. Trzyma id, nazwe, cene
-  bazowa i informacje o dostepnosci. Definiuje abstrakcyjna metode
-  `calculateDailyPrice()`, ktora kazdy typ sprzetu liczy po swojemu.
-- **LaptopSet** - zestaw laptopowy (dziedziczy po Equipment). Cena zalezy od
-  stacji dokujacej (+15) i ilosci RAM (+25 jesli >= 32 GB).
-- **CameraKit** - zestaw kamerowy (dziedziczy po Equipment). Cena zalezy od
-  liczby obiektywow (+10 za sztuke) i statywu (+15).
-- **Reservation** - laczy studenta, sprzet, liczbe dni i status. Przechowuje
-  cale obiekty Student i Equipment, nie tylko ich id. Liczy calkowity koszt.
-- **ReservationService** - glowna logika biznesowa: tworzenie rezerwacji ze
-  sprawdzeniem regul, zwrot sprzetu, wyszukiwanie dostepnego sprzetu i raporty.
-  Trzyma kolekcje (ArrayList) studentow, sprzetu i rezerwacji.
-- **LoyaltyDiscountPolicy** - osobna klasa naliczajaca znizke za lojalnosc.
+Main - uruchamia program. Tworzy dane startowe (studentow i sprzet), wyswietla
+menu i czyta to co wpisze uzytkownik. Starałem sie zeby w Main byla tylko
+obsluga menu, a cala logika siedzi w ReservationService.
 
-## Opis interfejsow
+Student - przechowuje dane studenta (id, imie i nazwisko, grupa, punkty).
+Ma metode do dodawania punktow po zwrocie sprzetu.
 
-- **Displayable** (`String getDisplayText()`) - dla obiektow, ktore potrafia
-  przygotowac czytelny opis do wyswietlenia w konsoli.
-  Implementuja go: **Equipment** (a przez dziedziczenie LaptopSet i CameraKit)
-  oraz **Reservation**.
-- **DiscountPolicy** (`double applyDiscount(Student, double)`) - opisuje sposob
-  naliczania znizki. Implementuje go klasa **LoyaltyDiscountPolicy**.
-  Dzieki temu `Reservation.calculateTotalCost(...)` nie wie nic o szczegolach
-  znizki - dostaje tylko obiekt polityki, co ulatwia podmiane regul w przyszlosci.
+Equipment - klasa abstrakcyjna, wspolna baza dla calego sprzetu. Trzyma id,
+nazwe, cene bazowa i czy sprzet jest dostepny. Ma metode abstrakcyjna
+calculateDailyPrice(), bo kazdy typ sprzetu liczy cene inaczej.
+
+LaptopSet - zestaw laptopowy, dziedziczy po Equipment. Do ceny bazowej dolicza
+15 za stacje dokujaca i 25 jak ma co najmniej 32 GB RAM.
+
+CameraKit - zestaw kamerowy, dziedziczy po Equipment. Dolicza 10 za kazdy
+obiektyw i 15 za statyw.
+
+Reservation - laczy studenta, sprzet, liczbe dni i status. Trzyma cale obiekty
+Student i Equipment, a nie tylko ich id. Liczy calkowity koszt rezerwacji.
+
+ReservationService - tu jest cala logika: tworzenie rezerwacji ze sprawdzaniem
+regul, zwrot sprzetu, szukanie dostepnego sprzetu i raporty. Trzyma listy
+(ArrayList) studentow, sprzetu i rezerwacji.
+
+LoyaltyDiscountPolicy - osobna klasa, ktora liczy znizke za lojalnosc.
+
+## Interfejsy
+
+Displayable - ma jedna metode getDisplayText(), ktora zwraca gotowy tekst do
+wypisania w konsoli. Implementuja go Equipment (czyli tez LaptopSet i CameraKit
+przez dziedziczenie) oraz Reservation.
+
+DiscountPolicy - metoda applyDiscount(student, cena). Implementuje go
+LoyaltyDiscountPolicy. Dzieki temu Reservation przy liczeniu kosztu nie musi
+wiedziec jak dziala znizka, tylko dostaje gotowa polityke.
 
 ## Enum
 
-- **ReservationStatus** - stan rezerwacji: ACTIVE, RETURNED, CANCELLED.
+ReservationStatus - ACTIVE, RETURNED, CANCELLED.
 
-## Gdzie dziala polimorfizm
+## Gdzie widac polimorfizm
 
-Lista sprzetu jest typu `List<Equipment>`, ale trzyma rozne obiekty:
-LaptopSet i CameraKit. Gdy w `Main.showEquipment()` wywolujemy w petli
-`e.getDisplayText()` (a w srodku `calculateDailyPrice()`), Java sama wybiera
-wersje metody pasujaca do faktycznego typu obiektu - laptop liczy cene inaczej
-niz kamera, mimo ze w kodzie operujemy na wspolnym typie Equipment.
-To samo dzieje sie przy liczeniu kosztu rezerwacji.
+Lista sprzetu jest typu List<Equipment>, ale w srodku siedza obiekty LaptopSet
+i CameraKit. Jak w Main lece petla po liscie i wolam getDisplayText() (a tam
+calculateDailyPrice()), to Java sama wybiera wlasciwa wersje metody zaleznie od
+tego jaki to naprawde obiekt. Laptop liczy cene inaczej niz kamera, mimo ze w
+kodzie traktuje je tak samo jako Equipment.
 
-## Reguly biznesowe (w skrocie)
+## Reguly
 
-- Rezerwacja powstaje tylko gdy student i sprzet istnieja, sprzet jest dostepny,
-  a liczba dni miesci sie w zakresie 1-14.
-- Po utworzeniu sprzet staje sie niedostepny, rezerwacja dostaje status ACTIVE.
-- Cena laptopa: baza (+15 stacja dokujaca) (+25 RAM >= 32 GB).
-- Cena kamery: baza + 10 za kazdy obiektyw (+15 statyw).
-- Student z >= 100 punktami dostaje 10% znizki na cala rezerwacje.
-- Przy zwrocie status zmienia sie na RETURNED, sprzet wraca do dostepnych,
-  a student dostaje 1 punkt za kazde pelne 10 PLN kosztu.
+- rezerwacje da sie zrobic tylko jak student i sprzet istnieja, sprzet jest
+  wolny, a liczba dni jest miedzy 1 a 14
+- po zrobieniu rezerwacji sprzet robi sie niedostepny i dostaje status ACTIVE
+- znizke 10% dostaje student ktory ma co najmniej 100 punktow
+- przy zwrocie status zmienia sie na RETURNED, sprzet znow jest wolny, a student
+  dostaje 1 punkt za kazde pelne 10 PLN kosztu
 
-## Przykladowy zapis konsoli (utworzenie i zwrot rezerwacji)
+## Przyklad dzialania (rezerwacja i zwrot)
 
-```
 Wybor: 3
 Podaj id studenta: S001
 Podaj id sprzetu: E003
@@ -92,19 +92,5 @@ Podaj id rezerwacji: R001
 
 Zwrocono sprzet. Student otrzymal 36 punkty lojalnosciowe.
 
-Wybor: 6
-
-=== RAPORT ===
-
-Aktywne rezerwacje (0):
-  brak
-
-Zakonczone rezerwacje (1):
-  R001 | student: Anna Kowalska | sprzet: Sony Content Kit | dni: 3 | status: RETURNED
-
-Laczny przychod z zakonczonych rezerwacji: 364.50 PLN
-Student z najwieksza liczba punktow: Anna Kowalska (156 pkt)
-```
-
-Uwaga do kosztu: dla zestawu Sony (baza 90 + 3 obiektywy * 10 + statyw 15 = 135/dzien),
-3 dni = 405 PLN, a po 10% znizce lojalnosciowej = 364.50 PLN. Zgadza sie z regulami z tresci.
+Maly komentarz do kosztu: Sony to 90 bazy + 3 obiektywy po 10 + 15 za statyw,
+czyli 135 za dzien. Razy 3 dni = 405, minus 10% znizki = 364.50 PLN.
